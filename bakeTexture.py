@@ -64,6 +64,7 @@ def bake_textures(tex_dim):
 
     # add an image texture node to the material
     bake_mat_tex_node = bake_mat_nodes.new('ShaderNodeTexImage')
+    bake_mat_tex_node.location = (bake_mat_uv_node.location[0] + bake_mat_uv_node.width + node_spacing, 100)
     
     # set the image texture to the generated image file 
     bake_mat_tex_node.image = generated_tex
