@@ -44,15 +44,20 @@ def bake_textures(tex_dim):
             src_mat_output = node
             break
 
-    # if we don't find a material output, create it
+    # if we do have a material output, check if the connected shader is 
+    # a principled bsdf, otherwise throw a warning 
+    # TODO: handle case where no shader is connected 
     if src_mat_output is None:
         print('material does not have an output!')
     else:
-        src_shader = src_mat_output.inputs[0].links[0].from_node
-        if src_shader.type == 'BSDF_PRINCIPLED':
-            print('we are using the right shader')
+        if not src_mat_output.inputs[0].links:
+            print('no shader connected to output!')
         else:
-            print('warning: shader type is ' + src_shader.type)
+            src_shader = src_mat_output.inputs[0].links[0].from_node
+            if src_shader.type == 'BSDF_PRINCIPLED':
+                print('we are using the right shader')
+            else:
+                print('warning: shader type is ' + src_shader.type)
 
     return
     
