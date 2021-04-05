@@ -65,85 +65,133 @@ def get_bake_list(i_material):
 
     return bake_list
 
+def bake_texture(input_info, i_bake_info):
+
+    #create blank image for texture
+    tex_name = i_bake_info['object'].name + "_" + input_info['name']
+    tex_dim = i_bake_info['texture_dimensions']
+    baked_image = bpy.data.images.new(name=tex_name, width=tex_dim, height=tex_dim, alpha=False)
+    print("created new texture " + baked_image.name)
+
+    # add an image texture node to the material
+    texture_node = i_bake_info['material_nodes'].new('ShaderNodeTexImage')
+
+    # set the image texture to the generated image file 
+    texture_node.image = baked_image
+
+    material_node = i_bake_info['output_nodes']['material_output']
+
+    # link the uv map to the image texture node
+    uv_map = i_bake_info['output_nodes']['uv_map']
+    i_bake_info['node_links'].new(uv_map.outputs[0], texture_node.inputs[0])
+
+    # add the texture node to the bake_info dictionary
+    i_bake_info['output_nodes']['baked_images'].append(texture_node)
+
+    # set the image node to active so we can bake to it 
+    texture_node.select = True
+    i_bake_info['material_nodes'].active = texture_node
+
+    # connect the textures to be baked directly to the material output
+    shader_input = i_bake_info['output_nodes']['shader'].inputs[input_info['index']]
+    shader_input_links = shader_input.links[0]
+    original_texture_socket = shader_input_links.from_socket
+    material_output = i_bake_info['output_nodes']['material_output']
+    i_bake_info['node_links'].new(original_texture_socket, material_node.inputs[0])
+
+    # bake the texture 
+    bpy.ops.object.bake(type='EMIT')
+
+    # connect texture node to the corresponding shader input
+    i_bake_info['node_links'].new(texture_node.outputs[0], shader_input)
+
 def bake_textures(tex_dim):
     # get the active object 
     obj = bpy.context.object
 
     # get the source material for the object
     src_mat = obj.active_material
+
+    # get a list of the shader inputs we'll be baking
     texture_bake_list = get_bake_list(src_mat)
 
     for bake_item in texture_bake_list:
         print('can bake ' + bake_item['name'] + ' from index ' + str(bake_item['index']))
 
-    return
-    
     # make copy of the active object for baking the texture 
     bake_obj = obj.copy()
     bake_obj.data = obj.data.copy()
     bake_obj.name = obj.name + "_baked"
     # we have to link the new object to a collection to see it
+    # TODO: link the object to (one of) the source's collections
     bpy.context.collection.objects.link(bake_obj)
-
-    #create blank image for texture
-    tex_name = bake_obj.name + "_tex"
-    generated_tex = bpy.data.images.new(name=tex_name, width=tex_dim, height=tex_dim, alpha=False)
-
-    print("created new texture " + generated_tex.name)
 
     # make a copy of the original object's material for baking
     bake_mat = bake_obj.active_material.copy()
     bake_mat.name = src_mat.name + "_baked"
     bake_obj.active_material = bake_mat
-
-    # get the node tree for the baked material so we can edit it 
-    bake_mat_node_tree = bake_mat.node_tree
-    bake_mat_nodes = bake_mat_node_tree.nodes
+    bake_mat_nodes = bake_mat.node_tree.nodes
+    bake_mat_links = bake_mat.node_tree.links
 
     # add a uv map node to the material 
     bake_mat_uv_node = bake_mat_nodes.new('ShaderNodeUVMap')
-    bake_mat_uv_node.location = (100, 100)
     # TODO: specifically set the uv map to be used 
 
-    # set horizontal spacing between generated nodes 
-    node_spacing = 50
-
-    # add an image texture node to the material
-    bake_mat_tex_node = bake_mat_nodes.new('ShaderNodeTexImage')
-    bake_mat_tex_node.location = (bake_mat_uv_node.location[0] + bake_mat_uv_node.width + node_spacing, 100)
-    
-    # set the image texture to the generated image file 
-    bake_mat_tex_node.image = generated_tex
-
-    # link the uv map to the image texture node 
-    bake_mat_node_tree.links.new(bake_mat_uv_node.outputs[0], bake_mat_tex_node.inputs[0])
-
-    # set the image node to active so we can bake to it 
-    bake_mat_tex_node.select = True
-    bake_mat_node_tree.nodes.active = bake_mat_tex_node
+    # make a dictionary containing the nodes we'll use in the baked texture
+    # as well as all necessary info like the object, the material, the texture dimensions
+    bake_info = {}
+    bake_info['object'] = bake_obj
+    bake_info['material'] = bake_mat
+    bake_info['texture_dimensions'] = tex_dim
+    bake_info['bake_list'] = texture_bake_list
+    bake_info['material_nodes'] = bake_mat_nodes
+    bake_info['node_links'] = bake_mat_links
+    bake_info['output_nodes'] = {}
+    bake_info['output_nodes']['material_output'] = get_material_output(bake_mat)
+    bake_info['output_nodes']['shader'] = get_material_shader(bake_mat)
+    bake_info['output_nodes']['baked_images'] = []
+    bake_info['output_nodes']['uv_map'] = bake_mat_uv_node
 
     # set render engine to cycles for baking 
     bpy.context.scene.render.engine = 'CYCLES'
 
-    # bake the texture 
-    bpy.ops.object.bake(type='EMIT')
+    # iteratively bake all textures
+    for tex_to_bake in texture_bake_list:
+        bake_texture(tex_to_bake, bake_info)
 
     # set render engine back to eevee when finished baking
     bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 
-    # clean up material to display the baked image 
-    # delete all nodes except for uv map and image texture
-    for mat_node in bake_mat_nodes:
-        if mat_node != bake_mat_tex_node and mat_node != bake_mat_uv_node:
-            bake_mat_nodes.remove(mat_node)
-            
-    # add in emission node and material output 
-    bake_mat_emission_node = bake_mat_nodes.new('ShaderNodeEmission')
-    bake_mat_emission_node.location = (bake_mat_tex_node.location[0] + bake_mat_tex_node.width + node_spacing, 100)
-    bake_mat_output_node = bake_mat_nodes.new('ShaderNodeOutputMaterial')
-    bake_mat_output_node.location = (bake_mat_emission_node.location[0] + bake_mat_emission_node.width + node_spacing, 100)
+    # connect shader back to material output
+    bake_info['node_links'].new(bake_info['output_nodes']['shader'].outputs[0], bake_info['output_nodes']['material_output'].inputs[0])
 
-    # connect image texture to emission node 
-    bake_mat_node_tree.links.new(bake_mat_tex_node.outputs[0], bake_mat_emission_node.inputs[0])
-    # connect emission node to material output
-    bake_mat_node_tree.links.new(bake_mat_emission_node.outputs[0], bake_mat_output_node.inputs[0])
+    # clean up material to display the baked image 
+    # delete all nodes not found in 'output nodes'
+    for mat_node in bake_mat_nodes:
+        if mat_node not in bake_info['output_nodes'].values() and mat_node not in bake_info['output_nodes']['baked_images']:
+            bake_mat_nodes.remove(mat_node)
+
+    # line up nodes, starting with the uv map
+    current_x = 100
+    starting_y = 100
+    current_y = 100
+    node_spacing = 50
+    max_tex_node_width = 0
+
+    bake_info['output_nodes']['uv_map'].location = (current_x, current_y)
+    current_x += bake_info['output_nodes']['uv_map'].width + node_spacing
+
+    # align the baked images
+    for baked_image in bake_info['output_nodes']['baked_images']:
+        baked_image.location = (current_x, current_y)
+        current_y -= baked_image.height * 3.0
+        if(max_tex_node_width < baked_image.width):
+            max_tex_node_width = baked_image.width
+
+    current_y = starting_y
+    current_x += max_tex_node_width + node_spacing
+
+    # align the shader and material output nodes
+    bake_info['output_nodes']['shader'].location = (current_x, current_y)
+    current_x += bake_info['output_nodes']['shader'].width + node_spacing
+    bake_info['output_nodes']['material_output'].location = (current_x, current_y)
