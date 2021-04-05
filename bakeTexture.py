@@ -56,8 +56,13 @@ def bake_textures(tex_dim):
             src_shader = src_mat_output.inputs[0].links[0].from_node
             if src_shader.type == 'BSDF_PRINCIPLED':
                 print('we are using the right shader')
+                for node_input in src_shader.inputs:
+                    if node_input.links:
+                        print('baking texture for ' + node_input.name)
             else:
                 print('warning: shader type is ' + src_shader.type)
+
+
 
     return
     
