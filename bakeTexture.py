@@ -85,6 +85,8 @@ def bake_texture(input_info, i_bake_info):
 
     # add an image texture node to the material
     texture_node = i_bake_info['material_nodes'].new('ShaderNodeTexImage')
+    # minimize texture node
+    texture_node.hide = True
 
     # set the image texture to the generated image file 
     texture_node.image = baked_image
@@ -188,7 +190,7 @@ def bake_textures(texture_bake_list, tex_dim):
     # align the baked images
     for baked_image in bake_info['output_nodes']['baked_images']:
         baked_image.location = (current_x, current_y)
-        current_y -= baked_image.height * 3.0
+        current_y -= baked_image.height + node_spacing
         if(max_tex_node_width < baked_image.width):
             max_tex_node_width = baked_image.width
 
