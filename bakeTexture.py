@@ -56,9 +56,12 @@ def get_bake_list(i_material):
     bake_list = []
     i_shader = get_material_shader(i_material)
     if i_shader is not None:
-        for node_input in i_shader.inputs:
+        for idx, node_input in enumerate(i_shader.inputs):
                     if node_input.links:
-                        bake_list.append(node_input.name)
+                        input_info = {}
+                        input_info['name'] = node_input.name
+                        input_info['index'] = idx
+                        bake_list.append(input_info)
 
     return bake_list
 
@@ -68,10 +71,10 @@ def bake_textures(tex_dim):
 
     # get the source material for the object
     src_mat = obj.active_material
-    src_bake_list = get_bake_list(src_mat)
+    texture_bake_list = get_bake_list(src_mat)
 
-    for bake_item in src_bake_list:
-        print('can bake ' + bake_item)
+    for bake_item in texture_bake_list:
+        print('can bake ' + bake_item['name'] + ' from index ' + str(bake_item['index']))
 
     return
     
