@@ -30,6 +30,31 @@ bpy.ops.wm.baketextures('INVOKE_DEFAULT')
 def bake_textures(tex_dim):
     # get the active object 
     obj = bpy.context.object
+
+    # get the source material for the object
+    src_mat = obj.active_material
+    src_mat_nodes = src_mat.node_tree.nodes
+    src_mat_links = src_mat.node_tree.links
+
+    # check if the output shader is a principled bsdf 
+    # first we find the Material Output node, if it exists
+    src_mat_output = None
+    for node in src_mat_nodes:
+        if node.type == "OUTPUT_MATERIAL":
+            src_mat_output = node
+            break
+
+    # if we don't find a material output, create it
+    if src_mat_output is None:
+        print('material does not have an output!')
+    else:
+        src_shader = src_mat_output.inputs[0].links[0].from_node
+        if src_shader.type == 'BSDF_PRINCIPLED':
+            print('we are using the right shader')
+        else:
+            print('warning: shader type is ' + src_shader.type)
+
+    return
     
     # make copy of the active object for baking the texture 
     bake_obj = obj.copy()
@@ -44,9 +69,8 @@ def bake_textures(tex_dim):
 
     print("created new texture " + generated_tex.name)
 
-    # make a copy of the original object's texture for baking
-    src_mat = bake_obj.active_material
-    bake_mat = src_mat.copy()
+    # make a copy of the original object's material for baking
+    bake_mat = bake_obj.active_material.copy()
     bake_mat.name = src_mat.name + "_baked"
     bake_obj.active_material = bake_mat
 
