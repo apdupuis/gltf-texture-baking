@@ -49,7 +49,7 @@ class WM_OT_bakeTex(bpy.types.Operator):
     bake_texture_list = []
     
     def execute(self, context):
-        bake_textures(self.tex_dim)
+        bake_textures(self.bake_texture_list, self.tex_dim)
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -57,8 +57,8 @@ class WM_OT_bakeTex(bpy.types.Operator):
         obj = bpy.context.object
         # get the source material for the object
         src_mat = obj.active_material
-        bake_texture_list = get_bake_list(src_mat)
-        for tex_to_bake in bake_texture_list:
+        self.bake_texture_list = get_bake_list(src_mat)
+        for tex_to_bake in self.bake_texture_list:
             print('baking texture ' + tex_to_bake['name'])
 
         return context.window_manager.invoke_props_dialog(self)
@@ -111,15 +111,12 @@ def bake_texture(input_info, i_bake_info):
     # connect texture node to the corresponding shader input
     i_bake_info['node_links'].new(texture_node.outputs[0], shader_input)
 
-def bake_textures(tex_dim):
+def bake_textures(texture_bake_list, tex_dim):
     # get the active object 
     obj = bpy.context.object
 
     # get the source material for the object
     src_mat = obj.active_material
-
-    # get a list of the shader inputs we'll be baking
-    texture_bake_list = get_bake_list(src_mat)
 
     # make copy of the active object for baking the texture 
     bake_obj = obj.copy()
