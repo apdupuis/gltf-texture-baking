@@ -45,6 +45,7 @@ class WM_OT_bakeTex(bpy.types.Operator):
     bl_idname = "wm.baketextures"
     
     # define the properties that can be set in the pop-up window
+    warnings = bpy.props.StringProperty(name = "warnings", default="all clear")
     tex_dim = bpy.props.IntProperty(name = "texture dimensions", default= default_tex_dim)
     bake_texture_list = []
     
@@ -58,8 +59,11 @@ class WM_OT_bakeTex(bpy.types.Operator):
         # get the source material for the object
         src_mat = obj.active_material
         self.bake_texture_list = get_bake_list(src_mat)
+
+        self.warnings = "baking textures:\n"
+
         for tex_to_bake in self.bake_texture_list:
-            print('baking texture ' + tex_to_bake['name'])
+            self.warnings += " " + tex_to_bake['name']
 
         return context.window_manager.invoke_props_dialog(self)
 
