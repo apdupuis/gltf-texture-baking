@@ -27,42 +27,41 @@ def unregister():
 register()
 bpy.ops.wm.baketextures('INVOKE_DEFAULT')
 
+
+
+def get_material_output(i_material):
+    i_mat_nodes = i_material.node_tree.nodes
+
+    i_mat_output = None
+    for node in i_mat_nodes:
+        if node.type == "OUTPUT_MATERIAL":
+            i_mat_output = node
+            break
+
+    return i_mat_output
+
+def get_material_shader(i_material):
+    i_mat_output = get_material_output(i_material)
+    i_shader = None
+
+    # check if we have a material output, and its first input is connected
+    if i_mat_output is not None and i_mat_output.inputs[0].links:
+        i_shader = i_mat_output.inputs[0].links[0].from_node
+
+    return i_shader
+
 def bake_textures(tex_dim):
     # get the active object 
     obj = bpy.context.object
 
     # get the source material for the object
     src_mat = obj.active_material
-    src_mat_nodes = src_mat.node_tree.nodes
-    src_mat_links = src_mat.node_tree.links
+    src_shader = get_material_shader(src_mat)
 
-    # check if the output shader is a principled bsdf 
-    # first we find the Material Output node, if it exists
-    src_mat_output = None
-    for node in src_mat_nodes:
-        if node.type == "OUTPUT_MATERIAL":
-            src_mat_output = node
-            break
-
-    # if we do have a material output, check if the connected shader is 
-    # a principled bsdf, otherwise throw a warning 
-    # TODO: handle case where no shader is connected 
-    if src_mat_output is None:
-        print('material does not have an output!')
-    else:
-        if not src_mat_output.inputs[0].links:
-            print('no shader connected to output!')
-        else:
-            src_shader = src_mat_output.inputs[0].links[0].from_node
-            if src_shader.type == 'BSDF_PRINCIPLED':
-                print('we are using the right shader')
-                for node_input in src_shader.inputs:
+    if src_shader is not None:
+        for node_input in src_shader.inputs:
                     if node_input.links:
                         print('baking texture for ' + node_input.name)
-            else:
-                print('warning: shader type is ' + src_shader.type)
-
-
 
     return
     
