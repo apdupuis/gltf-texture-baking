@@ -50,18 +50,28 @@ def get_material_shader(i_material):
 
     return i_shader
 
+# for a given material, return a list of inputs connected to the 
+# output shader that we can bake 
+def get_bake_list(i_material):
+    bake_list = []
+    i_shader = get_material_shader(i_material)
+    if i_shader is not None:
+        for node_input in i_shader.inputs:
+                    if node_input.links:
+                        bake_list.append(node_input.name)
+
+    return bake_list
+
 def bake_textures(tex_dim):
     # get the active object 
     obj = bpy.context.object
 
     # get the source material for the object
     src_mat = obj.active_material
-    src_shader = get_material_shader(src_mat)
+    src_bake_list = get_bake_list(src_mat)
 
-    if src_shader is not None:
-        for node_input in src_shader.inputs:
-                    if node_input.links:
-                        print('baking texture for ' + node_input.name)
+    for bake_item in src_bake_list:
+        print('can bake ' + bake_item)
 
     return
     
