@@ -2,33 +2,6 @@ import bpy
 
 default_tex_dim = 128
 
-# create pop-up menu for user input 
-class WM_OT_bakeTex(bpy.types.Operator):
-    """Open the 'bake textures' dialog box"""
-    bl_label = "Bake textures"
-    bl_idname = "wm.baketextures"
-    
-    # define the properties that can be set in the pop-up window
-    tex_dim = bpy.props.IntProperty(name = "texture dimensions", default= default_tex_dim)
-    
-    def execute(self, context):
-        bake_textures(self.tex_dim)
-        return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-
-def register():
-    bpy.utils.register_class(WM_OT_bakeTex)
-    
-def unregister():
-    bpy.utils.unregister_class(WM_OT_bakeTex)
-    
-register()
-bpy.ops.wm.baketextures('INVOKE_DEFAULT')
-
-
-
 def get_material_output(i_material):
     i_mat_nodes = i_material.node_tree.nodes
 
@@ -65,13 +38,46 @@ def get_bake_list(i_material):
 
     return bake_list
 
+# create pop-up menu for user input 
+class WM_OT_bakeTex(bpy.types.Operator):
+    """Open the 'bake textures' dialog box"""
+    bl_label = "Bake textures"
+    bl_idname = "wm.baketextures"
+    
+    # define the properties that can be set in the pop-up window
+    tex_dim = bpy.props.IntProperty(name = "texture dimensions", default= default_tex_dim)
+    bake_texture_list = []
+    
+    def execute(self, context):
+        bake_textures(self.tex_dim)
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        # get the active object 
+        obj = bpy.context.object
+        # get the source material for the object
+        src_mat = obj.active_material
+        bake_texture_list = get_bake_list(src_mat)
+        for tex_to_bake in bake_texture_list:
+            print('baking texture ' + tex_to_bake['name'])
+
+        return context.window_manager.invoke_props_dialog(self)
+
+def register():
+    bpy.utils.register_class(WM_OT_bakeTex)
+    
+def unregister():
+    bpy.utils.unregister_class(WM_OT_bakeTex)
+    
+register()
+bpy.ops.wm.baketextures('INVOKE_DEFAULT')
+
 def bake_texture(input_info, i_bake_info):
 
     #create blank image for texture
     tex_name = i_bake_info['object'].name + "_" + input_info['name']
     tex_dim = i_bake_info['texture_dimensions']
     baked_image = bpy.data.images.new(name=tex_name, width=tex_dim, height=tex_dim, alpha=False)
-    print("created new texture " + baked_image.name)
 
     # add an image texture node to the material
     texture_node = i_bake_info['material_nodes'].new('ShaderNodeTexImage')
@@ -114,9 +120,6 @@ def bake_textures(tex_dim):
 
     # get a list of the shader inputs we'll be baking
     texture_bake_list = get_bake_list(src_mat)
-
-    for bake_item in texture_bake_list:
-        print('can bake ' + bake_item['name'] + ' from index ' + str(bake_item['index']))
 
     # make copy of the active object for baking the texture 
     bake_obj = obj.copy()
