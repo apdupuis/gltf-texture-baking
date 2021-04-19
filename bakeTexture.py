@@ -55,7 +55,7 @@ class WM_OT_bakeTex(bpy.types.Operator):
     
     def invoke(self, context, event):
         # get the active object 
-        obj = bpy.context.object
+        obj = context.object
         # get the source material for the object
         src_mat = obj.active_material
         self.bake_texture_list = get_bake_list(src_mat)
