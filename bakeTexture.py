@@ -72,9 +72,10 @@ def register():
     
 def unregister():
     bpy.utils.unregister_class(WM_OT_bakeTex)
-    
-register()
-bpy.ops.wm.baketextures('INVOKE_DEFAULT')
+
+if __name__ == "__main__":
+    register()
+    bpy.ops.wm.baketextures('INVOKE_DEFAULT')
 
 def bake_texture(input_info, i_bake_info):
 
@@ -112,7 +113,7 @@ def bake_texture(input_info, i_bake_info):
     i_bake_info['node_links'].new(original_texture_socket, material_node.inputs[0])
 
     # bake the texture 
-    bpy.ops.object.bake(type='EMIT')
+    bpy.ops.object.bake("INVOKE_DEFAULT", type='EMIT')
 
     # connect texture node to the corresponding shader input
     i_bake_info['node_links'].new(texture_node.outputs[0], shader_input)
