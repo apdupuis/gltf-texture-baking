@@ -55,7 +55,7 @@ class WM_OT_bakeTex(bpy.types.Operator):
     
     def invoke(self, context, event):
         # get the active object 
-        obj = context.object
+        obj = bpy.context.active_object
         # get the source material for the object
         src_mat = obj.active_material
         self.bake_texture_list = get_bake_list(src_mat)
@@ -113,14 +113,14 @@ def bake_texture(input_info, i_bake_info):
     i_bake_info['node_links'].new(original_texture_socket, material_node.inputs[0])
 
     # bake the texture 
-    bpy.ops.object.bake("INVOKE_DEFAULT", type='EMIT')
+    bpy.ops.object.bake(type='EMIT')
 
     # connect texture node to the corresponding shader input
     i_bake_info['node_links'].new(texture_node.outputs[0], shader_input)
 
 def bake_textures(texture_bake_list, tex_dim):
     # get the active object 
-    obj = bpy.context.object
+    obj = bpy.context.active_object
 
     # get the source material for the object
     src_mat = obj.active_material
@@ -132,6 +132,10 @@ def bake_textures(texture_bake_list, tex_dim):
     # we have to link the new object to a collection to see it
     # TODO: link the object to (one of) the source's collections
     bpy.context.collection.objects.link(bake_obj)
+    # deselect all objects, set the bake object to be active 
+    bpy.ops.object.select_all(action='DESELECT')
+    bake_obj.select_set(True)
+    bpy.context.view_layer.objects.active = bake_obj
 
     # make a copy of the original object's material for baking
     bake_mat = bake_obj.active_material.copy()
@@ -166,7 +170,7 @@ def bake_textures(texture_bake_list, tex_dim):
     for tex_to_bake in texture_bake_list:
         bake_texture(tex_to_bake, bake_info)
 
-    # set render engine back to eevee when finished baking
+    # set render engine to cycles for baking 
     bpy.context.scene.render.engine = 'BLENDER_EEVEE'
 
     # connect shader back to material output
