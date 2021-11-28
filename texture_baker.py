@@ -170,6 +170,8 @@ class TextureBaker:
         self.make_material_bake_copy()
         self.material_uv_node = self.material_nodes.new('ShaderNodeUVMap')
         self.nodes_to_keep.append(self.material_uv_node)
+        print("we should have made a dummy texture here")
+
         self.make_bake_list()
         self.previously_baked_texture_info = []
         
@@ -229,6 +231,9 @@ class TextureBaker:
         
         # add new object to the scene collection
         bpy.context.collection.objects.link(self.obj)
+
+        # deselect old object
+        original_obj.select_set(False)
         
     def make_material_bake_copy(self):
         original_material = self.material
@@ -303,9 +308,10 @@ class MATERIAL_OT_gltf_baker(bpy.types.Operator):
                     self.texture_baker.clean_up_baked_material()
                     return {'FINISHED'}
                 else:
+                    print("starting a new bake")
                     self.texture_baker.bake_next_texture()
             else:
-                print("bake (hopefully) in progress, right click to cancel")
+                pass
 
         return {'PASS_THROUGH'}
 
