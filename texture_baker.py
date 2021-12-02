@@ -122,6 +122,7 @@ class TextureBaker:
         self.nodes_to_keep = []
         self.bake_list = []
         self.previously_baked_texture_info = []
+        self.use_dummy_texs = False
         
     def unused_node(self, node):
         return node not in self.nodes_to_keep and node not in self.baked_texture_nodes
@@ -206,11 +207,14 @@ class TextureBaker:
         baked_texture_info = _input_info
         baked_texture_info['texture_node'] = texture_node
         self.previously_baked_texture_info.append(baked_texture_info)
-        
+
         # set the image node to active so we can bake to it
         texture_node.select = True
         self.material_nodes.active = texture_node
         
+        if _input_info["dummy"]:
+            return
+
         # connect the nodes that will be baked directly to the material output
         shader_input = self.output_shader.inputs[_input_info['index']]
         shader_input_links = shader_input.links[0]
@@ -272,12 +276,39 @@ class TextureBaker:
             print("No output shader!")
             return
         
+        # Some GLTF image textures require that other 
+        # texture inputs be connected in order to 
+        # properly export - here we keep track of 
+        # whether we'll need to render a dummy image 
+        texture_prereqs = {
+            "Alpha": "Base Color",
+        }
+        possible_dummy_textures = []
         for idx, node_input in enumerate(self.output_shader.inputs):
             if node_input.links:
                 input_info = {}
                 input_info['name'] = node_input.name
                 input_info['index'] = idx
+                input_info['dummy'] = False                
                 self.bake_list.append(input_info)
+                if node_input.name in texture_prereqs:
+                    possible_dummy_textures.append(texture_prereqs[node_input.name])
+
+        # skip the last part if we don't need dummy textures
+        if not self.use_dummy_texs:
+            return
+
+        # append dummy textures, if needed
+        connected_tex_names = [input_info['name'] for input_info in self.bake_list]
+        for idx, node_input in enumerate(self.output_shader.inputs):
+            if node_input.name in possible_dummy_textures and node_input.name not in connected_tex_names:
+                input_info = {}
+                input_info['name'] = node_input.name
+                input_info['index'] = idx
+                input_info['dummy'] = True                
+                self.bake_list.append(input_info)
+
+        self.bake_list = sorted(self.bake_list, key=lambda input_info: input_info["index"])
     
 
 class MATERIAL_OT_gltf_baker(bpy.types.Operator):
